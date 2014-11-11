@@ -75,6 +75,7 @@ float o3_temperature_coeff = 0.0f, o3_humidity_coeff = 0.0f;
 void setup(){
     randomSeed(analogRead(0));
     
+    Serial.begin(115200);    
     Serial.println(F("Here are the stored coefficients:"));
     printCoefficients();
     
@@ -85,7 +86,6 @@ void setup(){
     
     rflink.setTransmitInterval(120000L); // transmit every two minutes
     
-    Serial.begin(115200);
     Serial.println(F("\n[Air Quality Egg - Remote - v2.02]"));
     Serial.print(F("Unit Address: "));
     printlnMAC(mymac);
