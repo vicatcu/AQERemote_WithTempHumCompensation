@@ -10,6 +10,10 @@
 #define FIRMWARE_REVISION 0x22
 
 // each coefficient holds a float
+#define MAGIC_NUMBER       (0x5A)
+#define NO2_COEFF_VALID    (252)
+#define CO_COEFF_VALID     (253)
+#define O3_COEFF_VALID     (254)
 #define NO2_C_COEFF_ADDR   (256)
 #define NO2_RS_COEFF_ADDR  (260)
 #define NO2_RS2_COEFF_ADDR (264)
@@ -64,6 +68,7 @@ byte first_time = 1;
 long previous_millis = 0;
 int need_to_send = 0;
 
+boolean no2_coeff_valid = false, co_coeff_valid = false, o3_coeff_valid = false;
 float temperature = 0.0f, humidity = 0.0f;
 float no2_c_coeff = 0.0f, no2_rs_coeff = 0.0f, no2_rs2_coeff = 0.0f, no2_rs3_coeff = 0.0f;
 float co_c_coeff = 0.0f, co_rs_coeff = 0.0f, co_rs2_coeff = 0.0f, co_rs3_coeff = 0.0f;
@@ -266,7 +271,7 @@ void setupEggBusPacket(){
     sensor_r_squared = sensor_r * sensor_r;
     sensor_r_cubed = sensor_r_squared * sensor_r;        
     
-    if(strcmp_P(eggBus.getSensorType(eggbus_sensor_index), PSTR("NO2")) == 0){
+    if(no2_coeff_valid && strcmp_P(eggBus.getSensorType(eggbus_sensor_index), PSTR("NO2")) == 0){
       sensor_val = no2_c_coeff 
         + (no2_temperature_coeff * temperature)
         + (no2_humidity_coeff * humidity)
@@ -274,7 +279,7 @@ void setupEggBusPacket(){
         + (no2_rs2_coeff * sensor_r_squared)
         + (no2_rs3_coeff * sensor_r_cubed);            
     }
-    else if(strcmp_P(eggBus.getSensorType(eggbus_sensor_index), PSTR("CO")) == 0){
+    else if(co_coeff_valid && strcmp_P(eggBus.getSensorType(eggbus_sensor_index), PSTR("CO")) == 0){
       sensor_val = co_c_coeff 
         + (co_temperature_coeff * temperature)
         + (co_humidity_coeff * humidity)
@@ -282,7 +287,7 @@ void setupEggBusPacket(){
         + (co_rs2_coeff * sensor_r_squared)
         + (co_rs3_coeff * sensor_r_cubed);          
     }
-    else if(strcmp_P(eggBus.getSensorType(eggbus_sensor_index), PSTR("O3")) == 0){
+    else if(o3_coeff_valid && strcmp_P(eggBus.getSensorType(eggbus_sensor_index), PSTR("O3")) == 0){
       sensor_val = o3_c_coeff 
         + (o3_temperature_coeff * temperature)
         + (o3_humidity_coeff * humidity)
@@ -333,6 +338,15 @@ void setupEggBusPacketR0(){
 }
 
 void printCoefficients(void){
+  
+  uint8_t val = 0;
+  val = eeprom_read_byte((const uint8_t *) NO2_COEFF_VALID);
+  if(val == MAGIC_NUMBER) no2_coeff_valid = true;
+  val = eeprom_read_byte((const uint8_t *) CO_COEFF_VALID);
+  if(val == MAGIC_NUMBER) co_coeff_valid = true;
+  val = eeprom_read_byte((const uint8_t *) O3_COEFF_VALID);
+  if(val == MAGIC_NUMBER) o3_coeff_valid = true;
+  
   eeprom_read_block(&no2_c_coeff,   (const void *) NO2_C_COEFF_ADDR,   4);
   eeprom_read_block(&no2_rs_coeff,  (const void *) NO2_RS_COEFF_ADDR,  4);
   eeprom_read_block(&no2_rs2_coeff, (const void *) NO2_RS2_COEFF_ADDR, 4);
@@ -458,6 +472,8 @@ void optionallyUpdateCoefficients(void){
     no2_rs3_coeff = Serial.parseFloat();
     eeprom_write_block(&no2_rs3_coeff, (void *) NO2_RS3_COEFF_ADDR, 4);
     Serial.println(no2_rs3_coeff, 8);
+    
+    eeprom_write_byte((uint8_t *) NO2_COEFF_VALID, MAGIC_NUMBER);
   }
   
   Serial.print(F("Do you want to change the CO coefficients? Y/N: "));
@@ -511,6 +527,8 @@ void optionallyUpdateCoefficients(void){
     co_rs3_coeff = Serial.parseFloat();
     eeprom_write_block(&co_rs3_coeff, (void *) CO_RS3_COEFF_ADDR, 4);
     Serial.println(co_rs3_coeff, 8);
+    
+    eeprom_write_byte((uint8_t *) CO_COEFF_VALID, MAGIC_NUMBER);    
   }
 
   Serial.print(F("Do you want to change the O3 coefficients? Y/N: "));
@@ -564,6 +582,8 @@ void optionallyUpdateCoefficients(void){
     o3_rs3_coeff = Serial.parseFloat();
     eeprom_write_block(&o3_rs3_coeff, (void *) O3_RS3_COEFF_ADDR, 4);
     Serial.println(o3_rs3_coeff, 8);
+    
+    eeprom_write_byte((uint8_t *) O3_COEFF_VALID, MAGIC_NUMBER);    
    
   }
 } 
